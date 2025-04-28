@@ -5,13 +5,22 @@ export default function ChatView(props) {
   let socket;
 
   function receiveMessage(e) {
-    console.log(e.data);
     const messageElement = document.createElement("div");
-    messageElement.innerHTML = (`
-      ${e.data}
-    `);
-    const chatElement = document.getElementById("chat-content-messages");
-    chatElement.appendChild(messageElement);
+    e.data.arrayBuffer().then((buffer) => {
+      const dataView = new DataView(buffer);
+      let string = "";
+
+      for( let i = 0; i < buffer.byteLength; i++ ) {
+        string += String.fromCharCode(dataView.getUint8(i));
+      }
+
+      messageElement.innerHTML = (`
+        ${string}
+      `);
+
+      const chatElement = document.getElementById("chat-content-messages");
+      chatElement.appendChild(messageElement);
+    });
   }
 
   function sendMessage(e) {
@@ -26,6 +35,7 @@ export default function ChatView(props) {
     socket.onopen = () => {
       const caption = document.getElementById("chat-caption-h1");
       caption.innerHTML = "Connected to chatroom";
+      
     };
     socket.onclose = (e) => {
       const caption = document.getElementById("chat-caption-h1");
@@ -59,7 +69,6 @@ export default function ChatView(props) {
   return {
     html,
     onMount: () => {
-      console.log("mounted");
       connectToChatroom();
     },
     scripts: [sendMessage]

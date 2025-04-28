@@ -38,7 +38,7 @@ func (client *client) receiveMessages() {
 
 func (client *client) sendMessages() {
 	for message := range client.messagesTo {
-		err := client.connection.WriteMessage(websocket.TextMessage, message)
+		err := client.connection.WriteMessage(websocket.BinaryMessage, message)
 
 		if err != nil {
 			fmt.Println("ERROR: Failed to write a message to client!")
