@@ -20,10 +20,6 @@ const (
 	messageBufferSize   = 256
 )
 
-type requestHandler interface {
-	handle(bytes []byte)
-}
-
 var upgrader = &websocket.Upgrader{
 	ReadBufferSize:  readWriteBufferSize,
 	WriteBufferSize: readWriteBufferSize,
@@ -49,7 +45,7 @@ func (server *Server) createClient(connection *websocket.Conn) *client {
 }
 
 func (server *Server) Run() {
-	chatManager := newChatManager(10)
+	chatManager := newChatManager(10, 10)
 	nextUserID := firstUserID
 
 	// Send a given message to all clients
@@ -65,28 +61,38 @@ func (server *Server) Run() {
 
 	// Handle first connection and exchanging of user info
 	requestHandlers[iHeadClientInfo] = func(in *bytes.Buffer, req *request) {
+		client := req.client
 		name := readString(in)
-		req.client.user.name = name
+		client.user.name = name
 
-		// Send a table of active users paired with their IDs
-		res := createResponse(oHeadActiveUsers)
+		// Write a table of active users paired with their IDs
+		res := createResponse(oHeadCompleteUpdate)
+		writeUInt32((uint32)(len(chatManager.activeUsers)), res) // Active user count
+
 		for active := range chatManager.activeUsers {
 			writeUserId(active.id, res)
 			writeString(*name, res)
 		}
 
-		req.client.send(res.Bytes())
+		// Write a snapshot of latest chat messages
+		for _, msg := range chatManager.visibleMessages() {
+			writeUserId(msg.user.id, res)
+			writeString(*msg.message, res)
+		}
+
+		client.send(res.Bytes())
 	}
 
 	// Handle user name change
 	requestHandlers[iHeadNameChange] = func(in *bytes.Buffer, req *request) {
+		client := req.client
 		name := readString(in)
-		req.client.user.name = name
+		client.user.name = name
 
 		// Only broadcast name change if the user is active
-		if chatManager.contains(req.client.user) {
-			res := createResponse(oHeadActiveUsers)
-			writeUserId(req.client.user.id, res)
+		if chatManager.contains(client.user) {
+			res := createResponse(oHeadNameChange)
+			writeUserId(client.user.id, res)
 			writeString(*name, res)
 
 			broadcastToAll(res)
@@ -95,6 +101,18 @@ func (server *Server) Run() {
 
 	// Handle chat input (message/command)
 	requestHandlers[iHeadChatInput] = func(in *bytes.Buffer, req *request) {
+		client := req.client
+		msg := readString(in)
+
+		activated, deactivated := chatManager.post(client.user, msg)
+
+		res := createResponse(oHeadDeltaUpdate)
+		writeUserInfo(activated, res)
+		writeUserInfo(deactivated, res)
+		writeUserId(client.user.id, res)
+		writeString(*msg, res)
+
+		broadcastToAll(res)
 	}
 
 	for {

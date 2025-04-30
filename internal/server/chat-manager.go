@@ -15,14 +15,16 @@ type chatMessage struct {
 
 type chatManager struct {
 	snapshot        []*chatMessage
+	visibleLength   int
 	activeThreshold uint64
 	messageCount    uint64
 	activeUsers     map[*userInfo]uint64
 }
 
-func newChatManager(activeThreshold uint64) *chatManager {
+func newChatManager(activeThreshold uint64, visibleLength int) *chatManager {
 	return &chatManager{
 		snapshot:        make([]*chatMessage, 0, activeThreshold+1),
+		visibleLength:   visibleLength,
 		activeThreshold: activeThreshold,
 		messageCount:    0,
 		activeUsers:     make(map[*userInfo]uint64),
@@ -37,8 +39,18 @@ func newChatMessage(user *userInfo, count uint64, msg *string) *chatMessage {
 	}
 }
 
-func (cm *chatManager) post(u *userInfo, msg *string) {
-	// Append thE message to chat
+// Posts a new message to the chat and updates the active user list by activating the poster
+// if necessary, and deactivating the last poster if they haven't posted a message ever since.
+// This function will result in at most one user being activated and one user being deactivated.
+// The activated and the deactivated user will be returned.
+func (cm *chatManager) post(u *userInfo, msg *string) (activated *userInfo, deactivated *userInfo) {
+	activated = nil
+	deactivated = nil
+
+	if _, ok := cm.activeUsers[u]; !ok {
+		activated = u
+	}
+
 	cm.messageCount++
 	cm.activeUsers[u] = cm.messageCount
 	cm.snapshot = append(cm.snapshot, newChatMessage(u, cm.messageCount, msg))
@@ -48,10 +60,17 @@ func (cm *chatManager) post(u *userInfo, msg *string) {
 	if last, ok := cm.activeUsers[lastUser]; ok && last < cm.messageCount-cm.activeThreshold {
 		delete(cm.activeUsers, lastUser)
 		cm.snapshot = cm.snapshot[1:]
+		deactivated = lastUser
 	}
+
+	return activated, deactivated
 }
 
-func (um *chatManager) contains(u *userInfo) bool {
-	_, ok := um.activeUsers[u]
+func (cm *chatManager) contains(u *userInfo) bool {
+	_, ok := cm.activeUsers[u]
 	return ok
+}
+
+func (cm *chatManager) visibleMessages() []*chatMessage {
+	return cm.snapshot[maxInt(0, len(cm.snapshot)-cm.visibleLength) : len(cm.snapshot)+1]
 }
