@@ -94,8 +94,6 @@ export function readCompleteUpdate(dataView, offset) {
   const messageCount = result.value;
   offset = result.offset;
 
-  console.log(messageCount)
-
   for( let i = 0; i < messageCount; i++ ) {
     result = readUserId(dataView, offset);
     const userId = result.value;
@@ -110,5 +108,41 @@ export function readCompleteUpdate(dataView, offset) {
   return {
     users,
     messages
+  };
+}
+
+export function readDeltaUpdate(dataView, offset) {
+  let activatedUser = null;
+
+    // Read activated user info
+  let result = readUserId(dataView, offset);
+  offset = result.offset;
+  const activatedId = result.value;
+
+  if( activatedId != 0 ) {
+    result = readString(dataView, offset);
+    offset = result.offset;
+    activatedUser = {userId: activatedId, username: result.value};
+  }
+
+    // Read deactivated user ID
+  result = readUserId(dataView, offset);
+  offset = result.offset;
+  const deactivatedId = result.value;
+
+    // Read message user ID
+  result = readUserId(dataView, offset);
+  offset = result.offset;
+  const messageUserId = result.value;
+
+    // Read chat message
+  result = readString(dataView, offset);
+  offset = result.offset;
+  const message = result.value;
+
+  return {
+    activatedUser,
+    deactivatedId,
+    chatMessage: {userId: messageUserId, message}
   };
 }

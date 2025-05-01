@@ -1,10 +1,24 @@
 import { getChatRoute } from "../config.js";
-import { iHeadCompleteUpdate, readCompleteUpdate, sendChatInput, sendClientInfo } from "../net.js";
+import { iHeadCompleteUpdate, iHeadDeltaUpdate, readCompleteUpdate, readDeltaUpdate, sendChatInput, sendClientInfo } from "../net.js";
 
   // Login screen component
 export default function ChatView(props) {
   let socket;
   let users = {};
+
+  function appendChatMessage(username, message) {
+    const messageElement = document.createElement("div");
+    messageElement.innerHTML = (`
+      <b>${username ? username : "ERROR"}:</b> ${message}
+    `);
+
+    const chatElement = document.getElementById("chat-content-messages");
+    chatElement.appendChild(messageElement);
+  }
+
+  function getUsername(userId) {
+    return users[userId];
+  }
 
   function receiveMessage(e) {
     e.data.arrayBuffer().then((buffer) => {
@@ -12,6 +26,7 @@ export default function ChatView(props) {
       const header = dataView.getUint8();
 
       switch( header ) {
+          // Handle complete update where all active users and latest chat snapshot is received
         case iHeadCompleteUpdate: {
           const chatState = readCompleteUpdate(dataView, 1);
           users = chatState.users;
@@ -19,14 +34,32 @@ export default function ChatView(props) {
           console.log(chatState);
 
           for( let chatMessage of chatState.messages ) {
-            const messageElement = document.createElement("div");
-            messageElement.innerHTML = (`
-              <b>${users[chatMessage.userId] ? users[chatMessage.userId] : "ERROR"}:</b> ${chatMessage.message}
-            `);
+            appendChatMessage(getUsername(chatMessage.userId), chatMessage.message);
+            // const messageElement = document.createElement("div");
+            // messageElement.innerHTML = (`
+            //   <b>${users[chatMessage.userId] ? users[chatMessage.userId] : "ERROR"}:</b> ${chatMessage.message}
+            // `);
 
-            const chatElement = document.getElementById("chat-content-messages");
-            chatElement.appendChild(messageElement);
+            // const chatElement = document.getElementById("chat-content-messages");
+            // chatElement.appendChild(messageElement);
           }
+        } break;
+
+          // Handle delta update where the latest message addition, activated and deactivated users are received
+        case iHeadDeltaUpdate: {
+          const {activatedUser, deactivatedId, chatMessage} = readDeltaUpdate(dataView, 1);
+
+          console.log(activatedUser, deactivatedId, chatMessage);
+
+          if( activatedUser ) {
+            users[activatedUser.userId] = activatedUser.username;
+          }
+
+          if( deactivatedId > 0 ) {
+            delete users[deactivatedId];
+          }
+
+          appendChatMessage(getUsername(chatMessage.userId), chatMessage.message);
         } break;
 
         default: {

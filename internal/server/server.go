@@ -122,7 +122,11 @@ func (server *Server) Run() {
 		fmt.Println("activated", activated)
 		fmt.Println("deactivated", deactivated)
 		writeUserInfo(activated, res)
-		writeUserInfo(deactivated, res)
+		if deactivated != nil {
+			writeUserId(deactivated.id, res)
+		} else {
+			writeUserId(0, res)
+		}
 		writeUserId(client.user.id, res)
 		writeString(*msg, res)
 
