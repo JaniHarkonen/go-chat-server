@@ -38,12 +38,13 @@ func (client *client) receiveMessages() {
 			client: client,
 			bytes:  bytes[1:],
 		}
+		fmt.Println("request left")
 	}
 }
 
 func (client *client) sendMessages() {
-	for req := range client.server.requests {
-		err := client.connection.WriteMessage(websocket.BinaryMessage, req.bytes)
+	for res := range client.responses {
+		err := client.connection.WriteMessage(websocket.BinaryMessage, res)
 
 		if err != nil {
 			fmt.Println("ERROR: Failed to write a message to client!")

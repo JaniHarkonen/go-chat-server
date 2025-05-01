@@ -72,5 +72,5 @@ func (cm *chatManager) contains(u *userInfo) bool {
 }
 
 func (cm *chatManager) visibleMessages() []*chatMessage {
-	return cm.snapshot[maxInt(0, len(cm.snapshot)-cm.visibleLength) : len(cm.snapshot)+1]
+	return cm.snapshot[maxInt(0, len(cm.snapshot)-cm.visibleLength):len(cm.snapshot)]
 }

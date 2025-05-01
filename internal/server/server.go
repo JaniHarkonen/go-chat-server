@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/websocket"
 )
@@ -48,6 +49,8 @@ func (server *Server) Run() {
 	chatManager := newChatManager(10, 10)
 	nextUserID := firstUserID
 
+	nextUserID++
+
 	// Send a given message to all clients
 	broadcastToAll := func(buffer *bytes.Buffer) {
 		bytes := buffer.Bytes()
@@ -61,25 +64,33 @@ func (server *Server) Run() {
 
 	// Handle first connection and exchanging of user info
 	requestHandlers[iHeadClientInfo] = func(in *bytes.Buffer, req *request) {
+		fmt.Println("client info received")
 		client := req.client
 		name := readString(in)
 		client.user.name = name
+		fmt.Println("client username is:", "'"+(*name)+"'")
 
 		// Write a table of active users paired with their IDs
 		res := createResponse(oHeadCompleteUpdate)
 		writeUInt32((uint32)(len(chatManager.activeUsers)), res) // Active user count
 
 		for active := range chatManager.activeUsers {
-			writeUserId(active.id, res)
-			writeString(*name, res)
+			writeUserInfo(active, res)
 		}
 
 		// Write a snapshot of latest chat messages
-		for _, msg := range chatManager.visibleMessages() {
-			writeUserId(msg.user.id, res)
-			writeString(*msg.message, res)
+		visible := chatManager.visibleMessages()
+
+		if len(visible) <= 0 {
+			writeEmpty(res)
+		} else {
+			for _, msg := range visible {
+				writeUserId(msg.user.id, res)
+				writeString(*msg.message, res)
+			}
 		}
 
+		fmt.Println("sending response to client info")
 		client.send(res.Bytes())
 	}
 
@@ -122,13 +133,22 @@ func (server *Server) Run() {
 			server.clients[client] = true
 			client.user = newUserInfo(nextUserID, nil)
 			nextUserID++
+			fmt.Println("new user registered")
 		// Client left
 		case client := <-server.outbound:
 			delete(server.clients, client)
 			close(client.responses)
+			fmt.Println("handling disconnection")
 		// Message received
 		case req := <-server.requests:
-			requestHandlers[req.head](bytes.NewBuffer(req.bytes), req)
+			fmt.Println("message received", req.head)
+			handler, ok := requestHandlers[req.head]
+
+			if ok {
+				handler(bytes.NewBuffer(req.bytes), req)
+			} else {
+				fmt.Println("ERROR: Invalid message header '" + strconv.Itoa((int)(req.head)) + "' received!")
+			}
 		}
 	}
 }

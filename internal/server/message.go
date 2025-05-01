@@ -16,6 +16,7 @@ type request struct {
 
 const firstUserID userID = 1
 const stringDelim byte = 0
+const empty byte = 0
 
 const (
 	// Inbound message header (from client)
@@ -45,6 +46,10 @@ func readString(buffer *bytes.Buffer) *string {
 	}
 
 	return &line
+}
+
+func writeEmpty(buffer *bytes.Buffer) {
+	buffer.WriteByte(empty)
 }
 
 func writeString(str string, buffer *bytes.Buffer) {

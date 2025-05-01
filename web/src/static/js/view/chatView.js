@@ -1,4 +1,5 @@
-import { getChatRoute } from "../CONFIG.js";
+import { getChatRoute } from "../config.js";
+import { sendClientInfo } from "../net.js";
 
   // Login screen component
 export default function ChatView(props) {
@@ -8,18 +9,19 @@ export default function ChatView(props) {
     const messageElement = document.createElement("div");
     e.data.arrayBuffer().then((buffer) => {
       const dataView = new DataView(buffer);
-      let string = "";
+      console.log(dataView.buffer);
+      // let string = "";
 
-      for( let i = 0; i < buffer.byteLength; i++ ) {
-        string += String.fromCharCode(dataView.getUint8(i));
-      }
+      // for( let i = 0; i < buffer.byteLength; i++ ) {
+      //   string += String.fromCharCode(dataView.getUint8(i));
+      // }
 
-      messageElement.innerHTML = (`
-        ${string}
-      `);
+      // messageElement.innerHTML = (`
+      //   ${string}
+      // `);
 
-      const chatElement = document.getElementById("chat-content-messages");
-      chatElement.appendChild(messageElement);
+      // const chatElement = document.getElementById("chat-content-messages");
+      // chatElement.appendChild(messageElement);
     });
   }
 
@@ -35,11 +37,10 @@ export default function ChatView(props) {
     socket.onopen = () => {
       const caption = document.getElementById("chat-caption-h1");
       caption.innerHTML = "Connected to chatroom";
-      
+      sendClientInfo(socket, {username: props.username});
     };
     socket.onclose = (e) => {
       const caption = document.getElementById("chat-caption-h1");
-      console.log(e)
       caption.innerHTML = "Connection lost! Reason: " + e.code;
     };
     socket.onmessage = receiveMessage;
