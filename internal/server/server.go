@@ -76,18 +76,17 @@ func (server *Server) Run() {
 
 		for active := range chatManager.activeUsers {
 			writeUserInfo(active, res)
+			fmt.Println("userinfo")
 		}
 
 		// Write a snapshot of latest chat messages
 		visible := chatManager.visibleMessages()
+		writeUInt32((uint32)(len(chatManager.snapshot)), res)
 
-		if len(visible) <= 0 {
-			writeEmpty(res)
-		} else {
-			for _, msg := range visible {
-				writeUserId(msg.user.id, res)
-				writeString(*msg.message, res)
-			}
+		for _, msg := range visible {
+			fmt.Println("wrote a message", *msg.message)
+			writeUserId(msg.user.id, res)
+			writeString(*msg.message, res)
 		}
 
 		fmt.Println("sending response to client info")
@@ -115,9 +114,13 @@ func (server *Server) Run() {
 		client := req.client
 		msg := readString(in)
 
+		fmt.Println(msg)
+
 		activated, deactivated := chatManager.post(client.user, msg)
 
 		res := createResponse(oHeadDeltaUpdate)
+		fmt.Println("activated", activated)
+		fmt.Println("deactivated", deactivated)
 		writeUserInfo(activated, res)
 		writeUserInfo(deactivated, res)
 		writeUserId(client.user.id, res)
@@ -142,6 +145,7 @@ func (server *Server) Run() {
 		// Message received
 		case req := <-server.requests:
 			fmt.Println("message received", req.head)
+			fmt.Println("message received", req.bytes)
 			handler, ok := requestHandlers[req.head]
 
 			if ok {

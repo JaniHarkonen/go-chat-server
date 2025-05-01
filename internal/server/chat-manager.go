@@ -1,5 +1,7 @@
 package server
 
+import "fmt"
+
 type userID uint64
 
 type userInfo struct {
@@ -9,29 +11,29 @@ type userInfo struct {
 
 type chatMessage struct {
 	user    *userInfo
-	count   uint64
+	count   int
 	message *string
 }
 
 type chatManager struct {
 	snapshot        []*chatMessage
 	visibleLength   int
-	activeThreshold uint64
-	messageCount    uint64
-	activeUsers     map[*userInfo]uint64
+	activeThreshold int
+	messageCount    int
+	activeUsers     map[*userInfo]int
 }
 
-func newChatManager(activeThreshold uint64, visibleLength int) *chatManager {
+func newChatManager(activeThreshold int, visibleLength int) *chatManager {
 	return &chatManager{
 		snapshot:        make([]*chatMessage, 0, activeThreshold+1),
 		visibleLength:   visibleLength,
 		activeThreshold: activeThreshold,
 		messageCount:    0,
-		activeUsers:     make(map[*userInfo]uint64),
+		activeUsers:     make(map[*userInfo]int),
 	}
 }
 
-func newChatMessage(user *userInfo, count uint64, msg *string) *chatMessage {
+func newChatMessage(user *userInfo, count int, msg *string) *chatMessage {
 	return &chatMessage{
 		user:    user,
 		count:   count,
@@ -58,6 +60,7 @@ func (cm *chatManager) post(u *userInfo, msg *string) (activated *userInfo, deac
 	// Update active users by deleting inactive ones
 	lastUser := cm.snapshot[0].user
 	if last, ok := cm.activeUsers[lastUser]; ok && last < cm.messageCount-cm.activeThreshold {
+		fmt.Println(last, cm.messageCount-cm.activeThreshold)
 		delete(cm.activeUsers, lastUser)
 		cm.snapshot = cm.snapshot[1:]
 		deactivated = lastUser

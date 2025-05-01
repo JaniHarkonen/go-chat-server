@@ -1,34 +1,45 @@
 import { getChatRoute } from "../config.js";
-import { sendClientInfo } from "../net.js";
+import { iHeadCompleteUpdate, readCompleteUpdate, sendChatInput, sendClientInfo } from "../net.js";
 
   // Login screen component
 export default function ChatView(props) {
   let socket;
+  let users = {};
 
   function receiveMessage(e) {
-    const messageElement = document.createElement("div");
     e.data.arrayBuffer().then((buffer) => {
       const dataView = new DataView(buffer);
-      console.log(dataView.buffer);
-      // let string = "";
+      const header = dataView.getUint8();
 
-      // for( let i = 0; i < buffer.byteLength; i++ ) {
-      //   string += String.fromCharCode(dataView.getUint8(i));
-      // }
+      switch( header ) {
+        case iHeadCompleteUpdate: {
+          const chatState = readCompleteUpdate(dataView, 1);
+          users = chatState.users;
+          console.log(dataView);
+          console.log(chatState);
 
-      // messageElement.innerHTML = (`
-      //   ${string}
-      // `);
+          for( let chatMessage of chatState.messages ) {
+            const messageElement = document.createElement("div");
+            messageElement.innerHTML = (`
+              <b>${users[chatMessage.userId] ? users[chatMessage.userId] : "ERROR"}:</b> ${chatMessage.message}
+            `);
 
-      // const chatElement = document.getElementById("chat-content-messages");
-      // chatElement.appendChild(messageElement);
+            const chatElement = document.getElementById("chat-content-messages");
+            chatElement.appendChild(messageElement);
+          }
+        } break;
+
+        default: {
+          console.log("Attempting to handle message with invalid header '" + header + "'!");
+        } break;
+      }
     });
   }
 
   function sendMessage(e) {
     e.preventDefault();
     const messageInput = Object.values(e.target)[0];
-    socket.send(messageInput.value);
+    sendChatInput(socket, {input: messageInput.value});
     messageInput.value = "";
   }
 
