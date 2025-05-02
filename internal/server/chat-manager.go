@@ -59,11 +59,13 @@ func (cm *chatManager) post(u *userInfo, msg *string) (activated *userInfo, deac
 
 	// Update active users by deleting inactive ones
 	lastUser := cm.snapshot[0].user
-	if last, ok := cm.activeUsers[lastUser]; ok && last < cm.messageCount-cm.activeThreshold {
-		fmt.Println(last, cm.messageCount-cm.activeThreshold)
-		delete(cm.activeUsers, lastUser)
+	if cm.messageCount > cm.activeThreshold {
+		if last, ok := cm.activeUsers[lastUser]; ok && last <= cm.messageCount-cm.activeThreshold {
+			fmt.Println(last, cm.messageCount-cm.activeThreshold)
+			delete(cm.activeUsers, lastUser)
+			deactivated = lastUser
+		}
 		cm.snapshot = cm.snapshot[1:]
-		deactivated = lastUser
 	}
 
 	return activated, deactivated
