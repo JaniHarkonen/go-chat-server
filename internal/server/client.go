@@ -8,7 +8,8 @@ import (
 
 type client struct {
 	connection *websocket.Conn
-	messagesTo chan []byte
+	user       *userInfo
+	responses  chan []byte
 	server     *Server
 }
 
@@ -23,7 +24,7 @@ func (client *client) receiveMessages() {
 	defer client.connection.Close() // Defer because the code is otherwise flagged as unreachable
 
 	for {
-		_, message, err := client.connection.ReadMessage()
+		_, bytes, err := client.connection.ReadMessage()
 
 		if err != nil {
 			fmt.Println("ERROR: Failed to read a message from client!")
@@ -32,13 +33,18 @@ func (client *client) receiveMessages() {
 			return
 		}
 
-		client.server.messages <- message
+		client.server.requests <- &request{
+			head:   (header)(bytes[0]),
+			client: client,
+			bytes:  bytes[1:],
+		}
+		fmt.Println("request left")
 	}
 }
 
 func (client *client) sendMessages() {
-	for message := range client.messagesTo {
-		err := client.connection.WriteMessage(websocket.TextMessage, message)
+	for res := range client.responses {
+		err := client.connection.WriteMessage(websocket.BinaryMessage, res)
 
 		if err != nil {
 			fmt.Println("ERROR: Failed to write a message to client!")
@@ -49,4 +55,8 @@ func (client *client) sendMessages() {
 	}
 
 	client.connection.Close()
+}
+
+func (client *client) send(bytes []byte) {
+	client.responses <- bytes
 }
