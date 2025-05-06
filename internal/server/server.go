@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/JaniHarkonen/go-chat-server/internal/chat"
 	"github.com/gorilla/websocket"
 )
 
@@ -46,7 +47,7 @@ func (server *Server) createClient(connection *websocket.Conn) *client {
 }
 
 func (server *Server) Run() {
-	chatManager := newChatManager(10, 10)
+	chatManager := chat.NewManager(10, 10)
 	nextUserID := firstUserID
 
 	nextUserID++
@@ -67,26 +68,26 @@ func (server *Server) Run() {
 		fmt.Println("client info received")
 		client := req.client
 		name := readString(in)
-		client.user.name = name
+		client.user.SetName(name)
 		fmt.Println("client username is:", "'"+(*name)+"'")
 
 		// Write a table of active users paired with their IDs
 		res := createResponse(oHeadCompleteUpdate)
-		writeUInt32((uint32)(len(chatManager.activeUsers)), res) // Active user count
+		writeUInt32((uint32)(len(chatManager.ActiveUsers())), res) // Active user count
 
-		for active := range chatManager.activeUsers {
+		for active := range chatManager.ActiveUsers() {
 			writeUserInfo(active, res)
 			fmt.Println("userinfo")
 		}
 
 		// Write a snapshot of latest chat messages
-		visible := chatManager.visibleMessages()
-		writeUInt32((uint32)(len(chatManager.snapshot)), res)
+		visible := chatManager.VisibleMessages()
+		writeUInt32((uint32)(len(chatManager.Snapshot())), res)
 
 		for _, msg := range visible {
-			fmt.Println("wrote a message", *msg.message)
-			writeUserId(msg.user.id, res)
-			writeString(*msg.message, res)
+			fmt.Println("wrote a message", *msg.Message())
+			writeUserId(msg.User().ID(), res)
+			writeString(*msg.Message(), res)
 		}
 
 		fmt.Println("sending response to client info")
@@ -97,12 +98,12 @@ func (server *Server) Run() {
 	requestHandlers[iHeadNameChange] = func(in *bytes.Buffer, req *request) {
 		client := req.client
 		name := readString(in)
-		client.user.name = name
+		client.user.SetName(name)
 
 		// Only broadcast name change if the user is active
-		if chatManager.contains(client.user) {
+		if chatManager.IsUserActive(client.user) {
 			res := createResponse(oHeadNameChange)
-			writeUserId(client.user.id, res)
+			writeUserId(client.user.ID(), res)
 			writeString(*name, res)
 
 			broadcastToAll(res)
@@ -116,18 +117,18 @@ func (server *Server) Run() {
 
 		fmt.Println(msg)
 
-		activated, deactivated := chatManager.post(client.user, msg)
+		activated, deactivated := chatManager.Post(client.user, msg)
 
 		res := createResponse(oHeadDeltaUpdate)
 		fmt.Println("activated", activated)
 		fmt.Println("deactivated", deactivated)
 		writeUserInfo(activated, res)
 		if deactivated != nil {
-			writeUserId(deactivated.id, res)
+			writeUserId(deactivated.ID(), res)
 		} else {
 			writeUserId(0, res)
 		}
-		writeUserId(client.user.id, res)
+		writeUserId(client.user.ID(), res)
 		writeString(*msg, res)
 
 		broadcastToAll(res)
@@ -138,7 +139,7 @@ func (server *Server) Run() {
 		// Client joined
 		case client := <-server.inbound:
 			server.clients[client] = true
-			client.user = newUserInfo(nextUserID, nil)
+			client.user = chat.NewUser(nextUserID, nil)
 			nextUserID++
 			fmt.Println("new user registered")
 		// Client left

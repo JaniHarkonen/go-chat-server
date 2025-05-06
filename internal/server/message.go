@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
+	"github.com/JaniHarkonen/go-chat-server/internal/chat"
 )
 
 type header uint8
@@ -14,7 +16,7 @@ type request struct {
 	bytes  []byte
 }
 
-const firstUserID userID = 1
+const firstUserID chat.ID = 1
 const stringDelim byte = 0
 
 const (
@@ -28,13 +30,6 @@ const (
 	oHeadCompleteUpdate // Server is sending a complete update containing latest messages, active and inactive users.
 	oHeadDeltaUpdate    // Server is sending the latest delta snapshot of messages, active and inactive users.
 )
-
-func newUserInfo(id userID, name *string) *userInfo {
-	return &userInfo{
-		id:   id,
-		name: name,
-	}
-}
 
 func readString(buffer *bytes.Buffer) *string {
 	line, err := buffer.ReadString(stringDelim)
@@ -51,7 +46,7 @@ func writeString(str string, buffer *bytes.Buffer) {
 	buffer.WriteString(str)
 }
 
-func writeUserId(id userID, buffer *bytes.Buffer) {
+func writeUserId(id chat.ID, buffer *bytes.Buffer) {
 	binary.Write(buffer, binary.BigEndian, id)
 }
 
@@ -59,10 +54,10 @@ func writeUInt32(n uint32, buffer *bytes.Buffer) {
 	binary.Write(buffer, binary.BigEndian, n)
 }
 
-func writeUserInfo(u *userInfo, b *bytes.Buffer) {
+func writeUserInfo(u *chat.User, b *bytes.Buffer) {
 	if u != nil {
-		writeUserId(u.id, b)
-		writeString(*u.name, b)
+		writeUserId(u.ID(), b)
+		writeString(*(u.Name()), b)
 	} else {
 		writeUserId(0, b)
 	}

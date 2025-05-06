@@ -3,12 +3,13 @@ package server
 import (
 	"fmt"
 
+	"github.com/JaniHarkonen/go-chat-server/internal/chat"
 	"github.com/gorilla/websocket"
 )
 
 type client struct {
 	connection *websocket.Conn
-	user       *userInfo
+	user       *chat.User
 	responses  chan []byte
 	server     *Server
 }

@@ -1,6 +1,6 @@
-package server
+package utils
 
-func minInt(a int, b int) int {
+func MinInt(a int, b int) int {
 	if a < b {
 		return a
 	}
@@ -8,7 +8,7 @@ func minInt(a int, b int) int {
 	return b
 }
 
-func maxInt(a int, b int) int {
+func MaxInt(a int, b int) int {
 	if a > b {
 		return a
 	}
