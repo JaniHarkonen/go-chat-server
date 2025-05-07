@@ -1,20 +1,20 @@
 package chat
 
-type ID uint64
+type UserID uint64
 
 type User struct {
-	id   ID
+	id   UserID
 	name *string
 }
 
-func NewUser(id ID, name *string) *User {
+func NewUser(id UserID, name *string) *User {
 	return &User{
 		id:   id,
 		name: name,
 	}
 }
 
-func (u *User) ID() ID {
+func (u *User) ID() UserID {
 	return u.id
 }
 

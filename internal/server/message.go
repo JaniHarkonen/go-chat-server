@@ -16,7 +16,7 @@ type request struct {
 	bytes  []byte
 }
 
-const firstUserID chat.ID = 1
+const firstUserID chat.UserID = 1
 const stringDelim byte = 0
 
 const (
@@ -46,7 +46,7 @@ func writeString(str string, buffer *bytes.Buffer) {
 	buffer.WriteString(str)
 }
 
-func writeUserId(id chat.ID, buffer *bytes.Buffer) {
+func writeUserId(id chat.UserID, buffer *bytes.Buffer) {
 	binary.Write(buffer, binary.BigEndian, id)
 }
 
