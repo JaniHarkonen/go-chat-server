@@ -31,19 +31,32 @@ const (
 	oHeadDeltaUpdate    // Server is sending the latest delta snapshot of messages, active and inactive users.
 )
 
-func readString(buffer *bytes.Buffer) *string {
-	line, err := buffer.ReadString(stringDelim)
+func readString(buffer *bytes.Buffer) string {
+	strBytes := make([]byte, 0)
+	len := buffer.Len()
 
-	if err != nil {
-		fmt.Println("ERROR: Unable to read string from a client message!")
-		fmt.Println(err.Error())
+	for range len {
+		char, err := buffer.ReadByte()
+
+		if err != nil {
+			fmt.Println("ERROR: Unable to read string from a client message!")
+			fmt.Println(err.Error())
+			return ""
+		}
+
+		if char == stringDelim {
+			break
+		}
+
+		strBytes = append(strBytes, char)
 	}
 
-	return &line
+	return string(strBytes)
 }
 
 func writeString(str string, buffer *bytes.Buffer) {
 	buffer.WriteString(str)
+	buffer.WriteByte(0)
 }
 
 func writeUserId(id chat.UserID, buffer *bytes.Buffer) {

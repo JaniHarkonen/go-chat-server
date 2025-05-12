@@ -1,14 +1,14 @@
 package command
 
-type command struct {
+type Command struct {
 	name      string
-	arguments []*argument
+	arguments []*Argument
 }
 
-func (comm *command) Name() *string {
+func (comm *Command) Name() *string {
 	return &comm.name
 }
 
-func (comm *command) GetArgument(index int) *argument {
+func (comm *Command) GetArgument(index int) *Argument {
 	return comm.arguments[index]
 }

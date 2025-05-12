@@ -1,7 +1,7 @@
 package chat
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/JaniHarkonen/go-chat-server/internal/utils"
 )
@@ -12,6 +12,8 @@ type Manager struct {
 	activeThreshold int
 	messageCount    int
 	activeUsers     map[*User]int
+	usernameTable   map[string]*User
+	mutedUsers      map[*User]bool
 }
 
 func NewManager(activeThreshold int, visibleLength int) *Manager {
@@ -21,7 +23,22 @@ func NewManager(activeThreshold int, visibleLength int) *Manager {
 		activeThreshold: activeThreshold,
 		messageCount:    0,
 		activeUsers:     make(map[*User]int),
+		usernameTable:   make(map[string]*User),
+		mutedUsers:      make(map[*User]bool),
 	}
+}
+
+func (cm *Manager) RegisterUser(u *User) error {
+	if _, ok := cm.usernameTable[*u.name]; !ok {
+		cm.usernameTable[*u.name] = u
+		return nil
+	}
+
+	return errors.New("attempting to register a user whose username already exists in the table")
+}
+
+func (cm *Manager) UnregisterUser(u *User) {
+	delete(cm.usernameTable, *u.name)
 }
 
 // Posts a new message to the chat and updates the active user list by activating the poster
@@ -44,7 +61,6 @@ func (cm *Manager) Post(u *User, msg *string) (activated *User, deactivated *Use
 	lastUser := cm.snapshot[0].user
 	if cm.messageCount > cm.activeThreshold {
 		if last, ok := cm.activeUsers[lastUser]; ok && last <= cm.messageCount-cm.activeThreshold {
-			fmt.Println(last, cm.messageCount-cm.activeThreshold)
 			delete(cm.activeUsers, lastUser)
 			deactivated = lastUser
 		}
@@ -52,6 +68,32 @@ func (cm *Manager) Post(u *User, msg *string) (activated *User, deactivated *Use
 	}
 
 	return activated, deactivated
+}
+
+func (cm *Manager) MuteUser(u *User) {
+	if u == nil {
+		return
+	}
+
+	cm.mutedUsers[u] = true
+}
+
+func (cm *Manager) UnmuteUser(u *User) {
+	if u == nil {
+		return
+	}
+
+	cm.mutedUsers[u] = false
+}
+
+func (cm *Manager) IsUserMuted(u *User) bool {
+	status, ok := cm.mutedUsers[u]
+
+	if !ok {
+		return false
+	}
+
+	return status
 }
 
 func (cm *Manager) IsUserActive(u *User) bool {
@@ -69,4 +111,12 @@ func (cm *Manager) ActiveUsers() map[*User]int {
 
 func (cm *Manager) Snapshot() []*Message {
 	return cm.snapshot
+}
+
+func (cm *Manager) FindUserByName(username string) *User {
+	if user, ok := cm.usernameTable[username]; ok {
+		return user
+	}
+
+	return nil
 }

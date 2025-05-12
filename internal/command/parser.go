@@ -2,7 +2,6 @@ package command
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 )
@@ -24,23 +23,22 @@ var argumentBuilder strings.Builder
 // Parses a given string into commands (command-argument combinations) by splitting
 // the string along whitespaces and treating the first split as the command name and
 // the rest of the splits as arguments to the command.
-func Parse(str string) (*command, error) {
+func Parse(str string) (*Command, error) {
 	commName, argString, found := strings.Cut(str, " ")
 
 	if !found {
-		return &command{
+		return &Command{
 			name:      commName,
-			arguments: []*argument{},
+			arguments: []*Argument{},
 		}, nil
 	}
 
-	arguments := make([]*argument, 0)
+	arguments := make([]*Argument, 0)
 	cursor := -1
 
 	// Appends a new argument
-	appendArgument := func(argType int) {
-		argument := argumentBuilder.String()
-		arguments = append(arguments, newArgument(argType, &argument))
+	appendArgument := func(argType int, value string) {
+		arguments = append(arguments, newArgument(argType, &value))
 	}
 
 	// Peek at next token after the given position
@@ -71,7 +69,7 @@ func Parse(str string) (*command, error) {
 			for stringChar != 0 {
 				// String closed -> valid
 				if stringChar == startChar {
-					appendArgument(typeString)
+					appendArgument(TypeString, argumentBuilder.String())
 					goto ValidString // Skip fail
 				}
 
@@ -82,7 +80,7 @@ func Parse(str string) (*command, error) {
 			}
 
 			// String was opened, but not closed -> invalid
-			return nil, newParserError("Encountered a non-closing string starting at position %p!", startCursor)
+			return nil, newParserError("encountered a non-closing string starting at position %p", startCursor)
 
 		ValidString:
 			advance(1)
@@ -91,7 +89,7 @@ func Parse(str string) (*command, error) {
 				if isNumber, isDecimal := isNumberChar(number); isNumber {
 					if isDecimal {
 						if isDecimalFound { // Decimal point was already found
-							return nil, newParserError("Encountered an invalid number starting at position %p!", startCursor)
+							return nil, newParserError("encountered an invalid number starting at position %p", startCursor)
 						}
 
 						isDecimalFound = true
@@ -104,37 +102,42 @@ func Parse(str string) (*command, error) {
 				}
 			}
 
-			appendArgument(typeNumber)
+			appendArgument(TypeNumber, argumentBuilder.String())
 		} else {
-			for char, _ := lookAhead(cursor); cursor != 0 && cursor != ' '; char, _ = lookAhead(cursor) {
+			for char, _ := lookAhead(cursor); char != 0 && char != ' '; char, _ = lookAhead(cursor) {
 				argumentBuilder.WriteByte(char)
 				advance(1)
 			}
 
-			argument := argumentBuilder.String()
+			var argType int
+			argValue := argumentBuilder.String()
 
 			// Boolean argument
-			if argument == "true" || argument == "false" {
-				appendArgument(typeBool)
-			} else if argument == "null" { // Null argument
-				appendArgument(typeNull)
+			if argValue == "true" || argValue == "false" {
+				argType = TypeBool
+			} else if argValue == "null" { // Null argument
+				argType = TypeNull
+			} else if argValue[0] == '@' { // User identifier
+				argType = TypeUser
+				argValue = argValue[1:]
 			} else { // Type to be determined
-				appendArgument(typeAmbiguous)
+				argType = TypeAmbiguous
 			}
+
+			appendArgument(argType, argValue)
 		}
 
 		// End of arguments
 		if next, pos := lookAhead(cursor); next == 0 {
 			break
 		} else if next != ' ' { // Next character has to be the argument separator
-			return nil, newParserError("Argument separator (whitespace) expected after argument/command at position %p!", pos)
+			return nil, newParserError("argument separator (whitespace) expected after argument/command at position %p", pos)
 		}
 
 		advance(1)
 	}
 
-	fmt.Println("returning")
-	return &command{
+	return &Command{
 		name:      commName,
 		arguments: arguments,
 	}, nil

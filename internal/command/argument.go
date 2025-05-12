@@ -1,30 +1,41 @@
 package command
 
+import "strconv"
+
 const (
-	typeFailed = iota
-	typeNull
-	typeBool
-	typeNumber
-	typeString
-	typeAmbiguous
+	TypeFailed = iota
+	TypeNull
+	TypeBool
+	TypeNumber
+	TypeString
+	TypeUser
+	TypeAmbiguous
 )
 
-type argument struct {
+type Argument struct {
 	argType int
 	data    *string
 }
 
-func newArgument(argType int, data *string) *argument {
-	return &argument{
+func newArgument(argType int, data *string) *Argument {
+	return &Argument{
 		argType: argType,
 		data:    data,
 	}
 }
 
-func (arg *argument) ArgType() int {
+func (arg *Argument) ArgType() int {
 	return arg.argType
 }
 
-func (arg *argument) Data() *string {
+func (arg *Argument) Data() *string {
 	return arg.data
+}
+
+func (arg *Argument) AsString() string {
+	return *arg.data
+}
+
+func (arg *Argument) AsInt() (int64, error) {
+	return strconv.ParseInt(*arg.data, 10, 0)
 }
