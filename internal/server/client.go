@@ -3,12 +3,13 @@ package server
 import (
 	"fmt"
 
+	"github.com/JaniHarkonen/go-chat-server/internal/chat"
 	"github.com/gorilla/websocket"
 )
 
 type client struct {
 	connection *websocket.Conn
-	user       *userInfo
+	user       *chat.User
 	responses  chan []byte
 	server     *Server
 }
@@ -21,8 +22,6 @@ func (client *client) init() {
 }
 
 func (client *client) receiveMessages() {
-	defer client.connection.Close() // Defer because the code is otherwise flagged as unreachable
-
 	for {
 		_, bytes, err := client.connection.ReadMessage()
 
@@ -38,7 +37,6 @@ func (client *client) receiveMessages() {
 			client: client,
 			bytes:  bytes[1:],
 		}
-		fmt.Println("request left")
 	}
 }
 
@@ -53,8 +51,6 @@ func (client *client) sendMessages() {
 			return
 		}
 	}
-
-	client.connection.Close()
 }
 
 func (client *client) send(bytes []byte) {
