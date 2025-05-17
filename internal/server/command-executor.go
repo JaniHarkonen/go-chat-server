@@ -34,7 +34,6 @@ func commandExecutor(server *Server) func(commString *string) error {
 
 		if okUsername && okDuration {
 			resolvedUser := server.chatManager.FindUserByName(username.AsString())
-			server.chatManager.MuteUser(resolvedUser)
 			vDuration, err := duration.AsInt()
 
 			if err != nil {
@@ -42,10 +41,7 @@ func commandExecutor(server *Server) func(commString *string) error {
 				return
 			}
 
-			go func() {
-				time.Sleep(time.Duration(vDuration) * time.Second)
-				server.chatManager.UnmuteUser(resolvedUser)
-			}()
+			server.chatManager.MuteUser(resolvedUser, time.Duration(vDuration*time.Second.Nanoseconds()))
 		}
 	}
 

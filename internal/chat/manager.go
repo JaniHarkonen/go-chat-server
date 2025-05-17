@@ -2,6 +2,7 @@ package chat
 
 import (
 	"errors"
+	"time"
 
 	"github.com/JaniHarkonen/go-chat-server/internal/utils"
 )
@@ -13,7 +14,7 @@ type Manager struct {
 	messageCount    int
 	activeUsers     map[*User]int
 	usernameTable   map[string]*User
-	mutedUsers      map[*User]bool
+	mutedUsers      map[*User]int64
 }
 
 func NewManager(activeThreshold int, visibleLength int) *Manager {
@@ -24,7 +25,7 @@ func NewManager(activeThreshold int, visibleLength int) *Manager {
 		messageCount:    0,
 		activeUsers:     make(map[*User]int),
 		usernameTable:   make(map[string]*User),
-		mutedUsers:      make(map[*User]bool),
+		mutedUsers:      make(map[*User]int64),
 	}
 }
 
@@ -70,12 +71,12 @@ func (cm *Manager) Post(u *User, msg *string) (activated *User, deactivated *Use
 	return activated, deactivated
 }
 
-func (cm *Manager) MuteUser(u *User) {
+func (cm *Manager) MuteUser(u *User, duration time.Duration) {
 	if u == nil {
 		return
 	}
 
-	cm.mutedUsers[u] = true
+	cm.mutedUsers[u] = time.Now().Unix() + int64(duration.Seconds())
 }
 
 func (cm *Manager) UnmuteUser(u *User) {
@@ -83,17 +84,21 @@ func (cm *Manager) UnmuteUser(u *User) {
 		return
 	}
 
-	cm.mutedUsers[u] = false
+	delete(cm.mutedUsers, u)
 }
 
 func (cm *Manager) IsUserMuted(u *User) bool {
-	status, ok := cm.mutedUsers[u]
+	mute, ok := cm.mutedUsers[u]
 
 	if !ok {
 		return false
 	}
 
-	return status
+	if time.Now().Unix() >= mute {
+		cm.UnmuteUser(u)
+	}
+
+	return true
 }
 
 func (cm *Manager) IsUserActive(u *User) bool {
